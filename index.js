@@ -50,6 +50,15 @@ async function run(){
         const query = req.body;
         const result = await productsCollection.insertOne(query);
         res.send(result);
+    });
+
+    //getting data from search query
+    app.get('/items', async (req, res) => {
+        const email = req.query.email;
+            const query = { email: email };
+            const cursor = productsCollection.find(query);
+            const items = await cursor.toArray();
+            res.send(items);
     })
 
 }
