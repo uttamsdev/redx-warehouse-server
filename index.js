@@ -44,6 +44,13 @@ async function run(){
         const result = await productsCollection.deleteOne(query);
         res.send(result);
     });
+    
+    //insert users added items
+    app.post('/products',async(req,res)=>{
+        const query = req.body;
+        const result = await productsCollection.insertOne(query);
+        res.send(result);
+    })
 
 }
 run().catch(console.dir);
