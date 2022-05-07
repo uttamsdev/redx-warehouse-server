@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const  jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const req = require("express/lib/request");
 const res = require("express/lib/response");
@@ -11,6 +12,22 @@ app.use(cors());
 app.use(express.json());
 require('dotenv').config();
 
+function verifyJWT(req,res, next){
+      const authHeader = req.headers.authorization;
+      if(!authHeader){
+        return res.status(401).send({message: 'unauthorized access'})
+      }
+      const token = authHeader.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
+        if(err){
+          return res.status(403).send({message: 'Forbidden Access'})
+        }
+        console.log('decoded',decoded);
+        req.decoded = decoded;
+        next();
+      })
+      
+}
 
 
 
@@ -22,6 +39,16 @@ async function run(){
     await client.connect();
     const productsCollection = client.db('redxWarehouse').collection('products');
 
+    // AUTH
+    app.post('/login', async(req,res)=>{
+      const user = req.body;
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '30d'
+      });
+      res.send({accessToken});
+    })
+
+    //PRODUCTS API
     //getting all products
     app.get('/products',async(req,res)=>{
         const query = {};
@@ -53,12 +80,18 @@ async function run(){
     });
 
     //getting data from search query
-    app.get('/items', async (req, res) => {
+    app.get('/items', verifyJWT, async (req, res) => {
+          const decodedEmail = req.decoded.email;
         const email = req.query.email;
-            const query = { email: email };
-            const cursor = productsCollection.find(query);
-            const items = await cursor.toArray();
-            res.send(items);
+        if(email === decodedEmail){
+          const query = { email: email };
+          const cursor = productsCollection.find(query);
+          const items = await cursor.toArray();
+          res.send(items);
+        }
+        else{
+          res.status(403).send({message: 'Forbidden Access'})
+        }
     });
 
     //update quantity
